@@ -2,7 +2,7 @@
 
 **AIML ZG565 Machine Learning — Assignment 2**
 
-🔗 **Live app:** _(Streamlit Cloud link — added after deployment)_
+🔗 **Live app:** https://room-occupancy-ml-6yextaxodh5gb9jjltsfpk.streamlit.app
 
 ---
 
