@@ -169,24 +169,31 @@ with right:
     st.caption("Rows 0–3 = number of people. 'support' = how many test rows have that class.")
 
     # ---------------- Extra: compare all 5 models on the uploaded data ----------------
+# ---------------- Extra: compare all 5 models on the uploaded data ----------------
 st.subheader("🏆 All models on this file")
 
 rows = []
 for name, mdl in models.items():                       # evaluate every saved model (no retraining)
     m, _ = evaluate(mdl, X_test, y_test)
     rows.append({"Model": name, **m})
-comparison = pd.DataFrame(rows).set_index("Model").round(4)
+comparison = pd.DataFrame(rows).set_index("Model")
 
 best = comparison["F1"].idxmax()
-st.dataframe(comparison.style.highlight_max(axis=0, color="#1baf7a55"), width="stretch")
+st.dataframe(
+    comparison.style.format("{:.4f}", na_rep="n/a")              # 4 decimals, like the README
+                    .highlight_max(axis=0, color="#1baf7a55"),
+    width="stretch",
+)
 st.caption(f"Green = best value in each column. Best model by macro F1 on this file: **{best}**.")
 
-# Bar chart of macro F1 and MCC for a quick visual comparison
-fig, ax = plt.subplots(figsize=(8, 3.5))
-comparison[["F1", "MCC"]].plot(kind="bar", ax=ax, color=["#2a78d6", "#eb6834"], rot=0)
-ax.set_ylim(max(0, comparison[["F1", "MCC"]].min().min() - 0.05), 1.0)
-ax.set_ylabel("Score")
-ax.set_title("Macro F1 and MCC by model")
-ax.legend(loc="lower right")
-st.pyplot(fig)
-plt.close(fig)
+# Bar chart of macro F1 and MCC, kept to two-thirds of the page width
+chart_col, _ = st.columns([2, 1])
+with chart_col:
+    fig, ax = plt.subplots(figsize=(7, 3.2))
+    comparison[["F1", "MCC"]].plot(kind="bar", ax=ax, color=["#2a78d6", "#eb6834"], rot=0)
+    ax.set_ylim(max(0, comparison[["F1", "MCC"]].min().min() - 0.05), 1.0)
+    ax.set_ylabel("Score")
+    ax.set_title("Macro F1 and MCC by model")
+    ax.legend(loc="lower right")
+    st.pyplot(fig)
+    plt.close(fig)
