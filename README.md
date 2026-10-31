@@ -75,10 +75,40 @@ training and test sets with a random split; scores are likely optimistic for a c
 
 ## Streamlit app features
 
-- Upload a test CSV (the sample `test_data.csv` can be downloaded from the sidebar)
-- Choose any of the 5 models from a dropdown
-- Six evaluation metrics, confusion matrix and per-class classification report
-- Comparison of all five models on the uploaded file
-- The app **loads the saved models and never retrains** on uploaded data
+The app **only loads the saved models from `model/`** — it never retrains on uploaded data.
+
+- **Sidebar:** model dropdown (5 models), CSV upload, and a button to download the sample `test_data.csv`
+- **Summary strip:** rows uploaded, classes present, selected model and the best model on the file
+- **📊 Evaluate:** a short card on the chosen model, the six metrics (Accuracy, AUC, Precision, Recall, F1, MCC), the confusion matrix, a one-line "most common mistake", and the classification report
+- **🏆 Compare models:** all five models on the uploaded file, best value per column highlighted, F1/MCC bar chart
+- **🔎 Explore predictions:** true vs predicted class counts, a table of the misclassified rows, and a download of all predictions as CSV
+- **🎛️ Try a reading:** start from a typical reading for 0–3 people, move the light/CO₂/motion inputs and see the predicted count with class probabilities
+- **📖 About the data:** dataset source, sensor table and training setup
 
 ## Repository structure
+
+```
+room-occupancy-ml/
+├── app.py                  # Streamlit app (loads saved models, no training)
+├── train_models.py         # trains and saves the 5 models, prints the comparison table
+├── requirements.txt        # pinned package versions
+├── test_data.csv           # held-out test set (2,026 rows) to upload in the app
+├── README.md
+├── .streamlit/config.toml  # app theme
+├── data/
+│   └── Occupancy_Estimation.csv
+├── model/                  # saved pipelines (.joblib) + model_comparison.csv
+└── notebooks/
+    ├── 01_explore.ipynb        # data exploration
+    └── 02_train_models.ipynb   # training, evaluation, observations
+```
+
+## How to run locally
+
+```bash
+git clone https://github.com/nethaji-aiml/room-occupancy-ml.git
+cd room-occupancy-ml
+pip install -r requirements.txt
+python train_models.py      # optional — the trained models are already in model/
+streamlit run app.py
+```
