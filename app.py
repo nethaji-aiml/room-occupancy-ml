@@ -8,8 +8,14 @@ Run locally:   streamlit run app.py
 import os
 
 import joblib
-import streamlit as st
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
+from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score,
+                             recall_score, f1_score, matthews_corrcoef,
+                             confusion_matrix, classification_report)
 
 # ---------------- Settings ----------------
 MODEL_DIR = "model"
@@ -45,54 +51,11 @@ def load_models():
 models = load_models()
 st.success(f"Loaded {len(models)} trained models: {', '.join(models)}")
 
-
-
 # The 16 feature names the models were trained on (stored inside every fitted pipeline)
 FEATURES = list(models["SVM"].feature_names_in_)
 
-# ---------------- Sidebar: controls ----------------
-with st.sidebar:
-    st.header("⚙️ Controls")
 
-    # (b) Model selection dropdown
-    model_name = st.selectbox("1. Choose a model", list(models))
-
-    # (a) Dataset upload — test data only (free tier has limited capacity)
-    uploaded = st.file_uploader("2. Upload test data (CSV)", type="csv")
-
-    # Convenience: let the evaluator download our test file to try the app
-    with open("test_data.csv", "rb") as f:
-        st.download_button("⬇️ Download sample test_data.csv", f,
-                           file_name="test_data.csv", mime="text/csv")
-
-    st.caption("The CSV must contain the 16 sensor columns and the "
-               f"'{TARGET}' column.")
-
-# ---------------- Main area ----------------
-if uploaded is None:
-    st.info("👈 Upload a test CSV in the sidebar to start "
-            "(or download the sample file first).")
-    st.stop()                                     # nothing more to show yet
-
-data = pd.read_csv(uploaded)
-
-# Check the required columns are present
-missing = [c for c in FEATURES + [TARGET] if c not in data.columns]
-if missing:
-    st.error(f"The uploaded file is missing these columns: {missing}")
-    st.stop()
-
-st.subheader("📄 Uploaded test data")
-st.write(f"**{len(data):,} rows**, {len(FEATURES)} features + target")
-st.dataframe(data.head(10), use_container_width=True)
-
-################################################################################3333
-
-import numpy as np
-from sklearn.metrics import (accuracy_score, roc_auc_score, precision_score,
-                             recall_score, f1_score, matthews_corrcoef)
-
-
+# ---------------- Helper: the 6 required metrics ----------------
 def evaluate(model, X, y):
     """The same 6 metrics as in training (macro-averaged). Returns metrics + predictions."""
     y_pred = model.predict(X)
@@ -114,11 +77,48 @@ def evaluate(model, X, y):
     return metrics, y_pred
 
 
+# ---------------- Sidebar: controls ----------------
+with st.sidebar:
+    st.header("⚙️ Controls")
+
+    # (b) Model selection dropdown
+    model_name = st.selectbox("1. Choose a model", list(models))
+
+    # (a) Dataset upload — test data only (free tier has limited capacity)
+    uploaded = st.file_uploader("2. Upload test data (CSV)", type="csv")
+
+    # Convenience: let the evaluator download our test file to try the app
+    with open("test_data.csv", "rb") as f:
+        st.download_button("⬇️ Download sample test_data.csv", f,
+                           file_name="test_data.csv", mime="text/csv")
+
+    st.caption("The CSV must contain the 16 sensor columns and the "
+               f"'{TARGET}' column.")
+
+# ---------------- Main area: uploaded data ----------------
+if uploaded is None:
+    st.info("👈 Upload a test CSV in the sidebar to start "
+            "(or download the sample file first).")
+    st.stop()                                     # nothing more to show yet
+
+data = pd.read_csv(uploaded)
+
+# Check the required columns are present
+missing = [c for c in FEATURES + [TARGET] if c not in data.columns]
+if missing:
+    st.error(f"The uploaded file is missing these columns: {missing}")
+    st.stop()
+
+st.subheader("📄 Uploaded test data")
+st.write(f"**{len(data):,} rows**, {len(FEATURES)} features + target")
+st.dataframe(data.head(10), width="stretch")
+
 # Warn if the uploaded file looks like the full dataset (includes training rows)
 if len(data) > 3000 or "Date" in data.columns:
     st.warning("This file looks like the **full dataset**, which includes the training rows — "
                "scores will be optimistic. For a fair evaluation upload **test_data.csv**.")
 
+# ---------------- Evaluation ----------------
 X_test = data[FEATURES]           # keep only the 16 features, in the training order
 y_test = data[TARGET]
 model = models[model_name]
@@ -136,12 +136,7 @@ if np.isnan(metrics["AUC"]):
 st.caption("Precision, Recall and F1 are macro-averaged over the 4 classes "
            "(each class counts equally).")
 
-
-####################################################
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, classification_report
-
+# ---------------- Confusion matrix and classification report ----------------
 st.subheader("🔍 Where does the model go wrong?")
 left, right = st.columns(2)
 
@@ -163,8 +158,12 @@ with left:
 with right:
     report = classification_report(y_test, y_pred, labels=labels, output_dict=True,
                                    zero_division=0)
-    report_df = pd.DataFrame(report).T                           # one row per class + averages
+    report_df = pd.DataFrame(report).T                          # one row per class + averages
+    # The "accuracy" row is a single number: show it once, with the total row count
+    if "accuracy" in report_df.index:
+        report_df.loc["accuracy", ["precision", "recall"]] = np.nan
+        report_df.loc["accuracy", "support"] = len(y_test)
     report_df["support"] = report_df["support"].astype(int)
     st.markdown("**Classification report**")
-    st.dataframe(report_df.round(4), use_container_width=True)
+    st.dataframe(report_df.round(4), width="stretch")
     st.caption("Rows 0–3 = number of people. 'support' = how many test rows have that class.")
