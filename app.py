@@ -167,3 +167,26 @@ with right:
     st.markdown("**Classification report**")
     st.dataframe(report_df.round(4), width="stretch")
     st.caption("Rows 0–3 = number of people. 'support' = how many test rows have that class.")
+
+    # ---------------- Extra: compare all 5 models on the uploaded data ----------------
+st.subheader("🏆 All models on this file")
+
+rows = []
+for name, mdl in models.items():                       # evaluate every saved model (no retraining)
+    m, _ = evaluate(mdl, X_test, y_test)
+    rows.append({"Model": name, **m})
+comparison = pd.DataFrame(rows).set_index("Model").round(4)
+
+best = comparison["F1"].idxmax()
+st.dataframe(comparison.style.highlight_max(axis=0, color="#1baf7a55"), width="stretch")
+st.caption(f"Green = best value in each column. Best model by macro F1 on this file: **{best}**.")
+
+# Bar chart of macro F1 and MCC for a quick visual comparison
+fig, ax = plt.subplots(figsize=(8, 3.5))
+comparison[["F1", "MCC"]].plot(kind="bar", ax=ax, color=["#2a78d6", "#eb6834"], rot=0)
+ax.set_ylim(max(0, comparison[["F1", "MCC"]].min().min() - 0.05), 1.0)
+ax.set_ylabel("Score")
+ax.set_title("Macro F1 and MCC by model")
+ax.legend(loc="lower right")
+st.pyplot(fig)
+plt.close(fig)
